@@ -1,0 +1,161 @@
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+
+// Contexts
+import { AuthProvider } from './context/AuthContext';
+import { CartProvider, useCart } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext';
+
+// Pages
+import Home from './pages/Home';
+import Shop from './pages/Shop';
+import ProductDetails from './pages/ProductDetails';
+import Cart from './pages/Cart';
+import Wishlist from './pages/Wishlist';
+import Checkout from './pages/Checkout';
+import Profile from './pages/Profile';
+import Auth from './pages/Auth';
+import NotFound from './pages/NotFound';
+
+// Global Components
+import CustomCursor from './components/CustomCursor';
+import WalkersCanvas from './components/WalkersCanvas';
+import Navbar from './components/Navbar';
+import CartDrawer from './components/CartDrawer';
+import Footer from './components/Footer';
+
+function AppContent() {
+  const location = useLocation();
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const { cart, updateQty, removeFromCart } = useCart();
+
+  const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  // Smooth slide fade route transition variants
+  const pageVariants = {
+    initial: { opacity: 0, y: 15 },
+    animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+    exit: { opacity: 0, y: -15, transition: { duration: 0.3, ease: 'easeIn' } }
+  };
+
+  return (
+    <>
+      {/* Interactive Global Pointer Cursor */}
+      <CustomCursor />
+
+      {/* Cinematic Walkers Background Canvas */}
+      <WalkersCanvas />
+
+      {/* Floating Header Navbar */}
+      <Navbar 
+        onCartOpen={() => setCartDrawerOpen(true)} 
+        cartCount={totalCartCount} 
+      />
+
+      {/* Page Routing Switchboard with Framer Motion AnimatePresence */}
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route 
+            path="/" 
+            element={
+              <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <Home />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="/shop" 
+            element={
+              <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <Shop />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="/product/:id" 
+            element={
+              <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <ProductDetails />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="/cart" 
+            element={
+              <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <Cart />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="/wishlist" 
+            element={
+              <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <Wishlist />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="/checkout" 
+            element={
+              <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <Checkout />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <Profile />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="/login" 
+            element={
+              <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <Auth />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="*" 
+            element={
+              <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <NotFound />
+              </motion.div>
+            } 
+          />
+        </Routes>
+      </AnimatePresence>
+
+      {/* Sliding Sidebar Cart Drawer */}
+      <CartDrawer
+        isOpen={cartDrawerOpen}
+        onClose={() => setCartDrawerOpen(false)}
+        cartItems={cart}
+        onUpdateQty={updateQty}
+        onRemoveItem={removeFromCart}
+      />
+
+      {/* Global Footer */}
+      <Footer />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <AppContent />
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
+    </Router>
+  );
+}

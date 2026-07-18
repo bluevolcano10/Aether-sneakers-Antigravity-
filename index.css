@@ -1,0 +1,142 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+const CartContext = createContext();
+
+export function CartProvider({ children }) {
+  const [cart, setCart] = useState([]);
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountValue, setDiscountValue] = useState(0); // percentage off
+  const [shippingCost, setShippingCost] = useState(10); // Default standard shipping
+
+  // Hydrate cart from localStorage on load
+  useEffect(() => {
+    const storedCart = JSON.parse(localStorage.getItem('aether_cart')) || [];
+    setCart(storedCart);
+  }, []);
+
+  // Sync cart changes to localStorage
+  const saveCart = (updatedCart) => {
+    setCart(updatedCart);
+    localStorage.setItem('aether_cart', JSON.stringify(updatedCart));
+  };
+
+  // Add item
+  const addToCart = (product, quantity = 1, size = 9, color = '#FAFAFA') => {
+    // Unique key representing product + size + color combination
+    const cartKey = `${product.id}-${size}-${color}`;
+
+    const existingIndex = cart.findIndex(item => item.cartKey === cartKey);
+
+    if (existingIndex > -1) {
+      const updatedCart = [...cart];
+      const newQty = updatedCart[existingIndex].quantity + quantity;
+      
+      // Stock check
+      if (newQty > product.stock) {
+        throw new Error(`Only ${product.stock} units of ${product.name} are available.`);
+      }
+      
+      updatedCart[existingIndex].quantity = newQty;
+      saveCart(updatedCart);
+    } else {
+      // Stock check
+      if (quantity > product.stock) {
+        throw new Error(`Only ${product.stock} units of ${product.name} are available.`);
+      }
+
+      const newItem = {
+        cartKey,
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.images.front,
+        size,
+        color,
+        quantity,
+        stock: product.stock
+      };
+      saveCart([...cart, newItem]);
+    }
+  };
+
+  // Update quantity
+  const updateQty = (cartKey, newQty) => {
+    if (newQty <= 0) {
+      removeFromCart(cartKey);
+      return;
+    }
+
+    const item = cart.find(item => item.cartKey === cartKey);
+    if (item && newQty > item.stock) {
+      throw new Error(`Maximum available stock is ${item.stock}.`);
+    }
+
+    const updatedCart = cart.map(item => 
+      item.cartKey === cartKey ? { ...item, quantity: newQty } : item
+    );
+    saveCart(updatedCart);
+  };
+
+  // Remove item
+  const removeFromCart = (cartKey) => {
+    const updatedCart = cart.filter(item => item.cartKey !== cartKey);
+    saveCart(updatedCart);
+  };
+
+  // Clear cart
+  const clearCart = () => {
+    saveCart([]);
+    setDiscountCode('');
+    setDiscountValue(0);
+  };
+
+  // Apply Coupon
+  const applyPromoCode = (code) => {
+    const normalized = code.trim().toUpperCase();
+    if (normalized === 'AETHER10') {
+      setDiscountCode(normalized);
+      setDiscountValue(10);
+      return true;
+    } else if (normalized === 'FUTURE20') {
+      setDiscountCode(normalized);
+      setDiscountValue(20);
+      return true;
+    }
+    return false;
+  };
+
+  // Calculations
+  const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const discountAmount = Math.round(subtotal * (discountValue / 100));
+  
+  // Free shipping above $300 (unless special express shipping selected)
+  const finalShipping = subtotal > 300 && shippingCost === 10 ? 0 : shippingCost;
+  const tax = Math.round((subtotal - discountAmount) * 0.08); // 8% tax rate
+  const total = Math.max(0, subtotal - discountAmount + finalShipping + tax);
+
+  return (
+    <CartContext.Provider value={{
+      cart,
+      discountCode,
+      discountValue,
+      shippingCost,
+      setShippingCost,
+      addToCart,
+      updateQty,
+      removeFromCart,
+      clearCart,
+      applyPromoCode,
+      subtotal,
+      discountAmount,
+      finalShipping,
+      tax,
+      total
+    }}>
+      {children}
+    </CartContext.Provider>
+  );
+}
+
+export function useCart() {
+  return useContext(CartContext);
+}
